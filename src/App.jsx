@@ -1,34 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
 
 const App = () => {
   const [prompt, setPrompt] = useState('');
+  const [jobId, setJobId] = useState(null);
+  const [status, setStatus] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const generateImage = async () => {
+  // Polling logic
+  useEffect(() => {
+    if (!jobId) return;
+
+    const interval = setInterval(async () => {
+      const res = await fetch(`/api/check-job?id=${jobId}`);
+      const data = await res.json();
+
+      if (data.job?.status === 'done') {
+        setImageUrl(data.job.image_url);
+        setStatus('done');
+        clearInterval(interval);
+      } else if (data.job?.status === 'failed') {
+        setStatus('failed');
+        clearInterval(interval);
+      } else {
+        setStatus(data.job?.status || 'pending');
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [jobId]);
+
+  const handleGenerate = async () => {
     setLoading(true);
     setImageUrl('');
+    setStatus('');
+    setJobId(null);
 
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ prompt })
-      });
+    const res = await fetch('/api/create-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
 
-      const data = await response.json();
+    const data = await res.json();
 
-      if (!data.imageUrl) {
-        throw new Error("Image not returned. Check server logs.");
-      }
-
-      setImageUrl(data.imageUrl);
-    } catch (err) {
-      alert("Image generation failed: " + err.message);
-      console.error("Backend error:", err);
+    if (data.job?.id) {
+      setJobId(data.job.id);
+      setStatus('pending');
+    } else {
+      alert('Failed to create job');
     }
 
     setLoading(false);
@@ -54,10 +75,13 @@ const App = () => {
         placeholder="Describe your dream tiny home..."
         style={{ width: '100%', padding: 10, fontSize: 16 }}
       />
-      <button onClick={generateImage} style={{ marginTop: 10, padding: 10 }}>
+      <button onClick={handleGenerate} style={{ marginTop: 10, padding: 10 }}>
         Generate Image
       </button>
-      {loading && <p>Loading...</p>}
+
+      {loading && <p>Submitting prompt...</p>}
+      {status && <p>Status: {status}</p>}
+
       {imageUrl && (
         <div style={{ marginTop: 20 }}>
           <img src={imageUrl} alt="Generated" style={{ maxWidth: '100%' }} />
