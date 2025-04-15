@@ -1,175 +1,30 @@
-import { useState } from 'react';
-import Head from 'next/head';
-import styles from '../styles/Home.module.css';
-import { jsPDF } from 'jspdf';
-
-export default function Home() {
-  const [prompt, setPrompt] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const generateImage = async () => {
-    if (!prompt.trim()) {
-      setError('Please enter a description of your dream tiny home.');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      console.log("Submitting prompt to API:", prompt);
-      
-      const response = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
-      });
-
-      console.log("API response status:", response.status);
-      
-      // Get response text first
-      const responseText = await response.text();
-      
-      // Try to parse as JSON
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("Failed to parse API response:", parseError);
-        console.error("Raw response:", responseText);
-        throw new Error("Received invalid response from server");
-      }
-      
-      // Check for error response
-      if (!response.ok) {
-        console.error("Error response from API:", data);
-        throw new Error(data.error || "Failed to generate image");
-      }
-
-      // Check for image URL
-      if (data.imageUrl) {
-        console.log("Image generated successfully");
-        setImageUrl(data.imageUrl);
-      } else {
-        console.error("No image URL in response:", data);
-        throw new Error("No image URL returned from API");
-      }
-    } catch (err) {
-      console.error("Error in generate image flow:", err);
-      setError(err.message || "An unexpected error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const downloadPDF = () => {
-    if (!imageUrl) return;
-
-    const pdf = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-    });
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Generate your dream tiny home with AI" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>TinyHomeAI | Generate your dream tiny home</title>
     
-    // Add title
-    pdf.setFontSize(24);
-    pdf.text('Your Dream Tiny Home Blueprint', 105, 20, { align: 'center' });
+    <!-- Open Graph / Social Media Meta Tags -->
+    <meta property="og:title" content="TinyHomeAI Generator" />
+    <meta property="og:description" content="Generate images of your dream tiny home using AI" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tinyhomeai.com" />
+    <meta property="og:image" content="https://tinyhomeai.com/og-image.jpg" />
     
-    // Add prompt description
-    pdf.setFontSize(12);
-    pdf.text(`Description: ${prompt}`, 20, 35);
-    
-    // Add image
-    const img = new Image();
-    img.src = imageUrl;
-    
-    img.onload = () => {
-      // Calculate aspect ratio to fit on page
-      const pageWidth = 270;
-      const pageHeight = 180;
-      
-      let imgWidth = img.width;
-      let imgHeight = img.height;
-      
-      if (imgWidth > pageWidth || imgHeight > pageHeight) {
-        const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
-        imgWidth *= ratio;
-        imgHeight *= ratio;
-      }
-      
-      const xPos = (297 - imgWidth) / 2;
-      const yPos = 50;
-      
-      pdf.addImage(imageUrl, 'JPEG', xPos, yPos, imgWidth, imgHeight);
-      pdf.save('tiny-home-blueprint.pdf');
-    };
-  };
-
-  return (
-    <div className={styles.container}>
-      <Head>
-        <title>TinyHomeAI | Generate your dream tiny home</title>
-        <meta name="description" content="Generate images of your dream tiny home with AI" />
-        <link rel="icon" href="/favicon.ico" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>TinyHomeAI Generator</h1>
-        
-        <p className={styles.description}>
-          Describe your dream tiny home and watch AI bring it to life
-        </p>
-
-        <div className={styles.inputContainer}>
-          <textarea
-            className={styles.promptInput}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe your dream tiny home (e.g., A cozy wooden tiny house with a sloped roof, large windows, and a small porch...)"
-            rows={4}
-          />
-          
-          <button 
-            className={styles.generateButton} 
-            onClick={generateImage}
-            disabled={loading}
-          >
-            {loading ? 'Generating...' : 'Generate Image'}
-          </button>
-        </div>
-
-        {error && (
-          <div className={styles.errorContainer}>
-            <p className={styles.errorMessage}>{error}</p>
-            <p className={styles.errorHint}>
-              This might be due to API limits or temporary service issues. Please try again in a few moments.
-            </p>
-          </div>
-        )}
-
-        {imageUrl && (
-          <div className={styles.resultContainer}>
-            <div className={styles.imageContainer}>
-              <img src={imageUrl} alt="Generated tiny home" className={styles.generatedImage} />
-            </div>
-            
-            <button 
-              className={styles.downloadButton} 
-              onClick={downloadPDF}
-            >
-              Download as PDF Blueprint
-            </button>
-          </div>
-        )}
-      </main>
-
-      <footer className={styles.footer}>
-        <p>Powered by OpenAI DALL-E 3 and Next.js</p>
-      </footer>
-    </div>
-  );
-}
+    <!-- Font Import (if needed) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!-- This HTML file is a template for your Next.js app -->
+  </body>
+</html>
