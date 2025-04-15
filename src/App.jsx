@@ -8,53 +8,64 @@ const App = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Polling logic
+  // Poll for job status every 5 seconds
   useEffect(() => {
     if (!jobId) return;
 
     const interval = setInterval(async () => {
-      const res = await fetch(`/api/check-job?id=${jobId}`);
-      const data = await res.json();
+      try {
+        const res = await fetch(`/api/check-job?id=${jobId}`);
+        const data = await res.json();
 
-      if (data.job?.status === 'done') {
-        setImageUrl(data.job.image_url);
-        setStatus('done');
+        if (data.job?.status === 'done') {
+          setImageUrl(data.job.image_url);
+          setStatus('done');
+          clearInterval(interval);
+        } else if (data.job?.status === 'failed') {
+          setStatus('failed');
+          clearInterval(interval);
+        } else {
+          setStatus(data.job?.status || 'pending');
+        }
+      } catch (err) {
+        console.error("Error checking job status:", err);
+        setStatus('error');
         clearInterval(interval);
-      } else if (data.job?.status === 'failed') {
-        setStatus('failed');
-        clearInterval(interval);
-      } else {
-        setStatus(data.job?.status || 'pending');
       }
     }, 5000);
 
     return () => clearInterval(interval);
   }, [jobId]);
 
+  // Submit prompt and create job
   const handleGenerate = async () => {
     setLoading(true);
     setImageUrl('');
     setStatus('');
     setJobId(null);
 
-    const res = await fetch('/api/create-job', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    });
+    try {
+      const res = await fetch('/api/create-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (data.job?.id) {
+      if (!data.job?.id) throw new Error("No job returned");
+
       setJobId(data.job.id);
       setStatus('pending');
-    } else {
-      alert('Failed to create job');
+    } catch (err) {
+      console.error("❌ Job creation failed:", err);
+      alert("Job creation failed: " + err.message);
     }
 
     setLoading(false);
   };
 
+  // Generate PDF blueprint
   const downloadPDF = () => {
     const element = document.createElement("div");
     element.innerHTML = `
@@ -66,7 +77,7 @@ const App = () => {
   };
 
   return (
-    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
+    <div style={{ padding: 20, fontFamily: 'sans-serif', maxWidth: 600, margin: 'auto' }}>
       <h1>Tiny Home AI</h1>
       <input
         type="text"
