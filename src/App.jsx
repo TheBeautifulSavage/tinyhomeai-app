@@ -9,21 +9,28 @@ const App = () => {
   const generateImage = async () => {
     setLoading(true);
     setImageUrl('');
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt,
-        n: 1,
-        size: "1024x1024"
-      })
-    });
-    const data = await response.json();
-    setImageUrl(data.data[0].url);
+
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prompt })
+      });
+
+      const data = await response.json();
+
+      if (!data.imageUrl) {
+        throw new Error("Image not returned. Check server logs.");
+      }
+
+      setImageUrl(data.imageUrl);
+    } catch (err) {
+      alert("Image generation failed: " + err.message);
+      console.error("Backend error:", err);
+    }
+
     setLoading(false);
   };
 
