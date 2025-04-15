@@ -26,14 +26,19 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    console.log("👉 OpenAI raw response:", JSON.stringify(data, null, 2));
+
     if (!data?.data?.[0]?.url) {
-      return res.status(500).json({ message: "Failed to generate image", details: data });
+      return res.status(500).json({
+        message: "OpenAI didn't return an image.",
+        details: data,
+      });
     }
 
     res.status(200).json({ imageUrl: data.data[0].url });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error", error });
+    console.error("❌ Backend Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 }
