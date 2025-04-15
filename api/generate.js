@@ -21,24 +21,27 @@ export default async function handler(req, res) {
         prompt,
         n: 1,
         size: "1024x1024"
-      })
+      }),
+      timeout: 30000 // milliseconds (optional - helps avoid long 504s)
     });
 
     const contentType = response.headers.get("content-type") || "";
 
-    // Handle non-JSON errors gracefully
     if (!contentType.includes("application/json")) {
       const text = await response.text();
       console.error("❌ Non-JSON response from OpenAI:", text);
-      return res.status(502).json({ message: "Invalid response from OpenAI", raw: text });
+      return res.status(502).json({ 
+        message: "OpenAI returned invalid response (non-JSON)", 
+        raw: text 
+      });
     }
 
     const data = await response.json();
 
     if (!data?.data?.[0]?.url) {
       return res.status(500).json({
-        message: "Image not returned from OpenAI",
-        details: data,
+        message: "OpenAI did not return an image.",
+        details: data
       });
     }
 
@@ -46,6 +49,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("❌ Server Error:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 }
+
